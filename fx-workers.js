@@ -87,7 +87,7 @@ const manualPipe = async (readable, writable) => {
 
 const handleWebSocketConn = async (webSocket, request, env) => {
     const cfg = await getRuntimeConfig(env);
-    const fallbackProxyHost = (env?.FALLBACK_PROXYIP || DEFAULT_FALLBACK_PROXYIP).trim() || DEFAULT_FALLBACK_PROXYIP;
+    const fallbackProxyHost = DEFAULT_FALLBACK_PROXYIP;
     const expectedUuidBytes = cfg.uuidBytes || getDefaultUuidBytes();
     const protocolHeader = request.headers.get('sec-websocket-protocol');
     // @ts-ignore

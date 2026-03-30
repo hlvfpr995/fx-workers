@@ -51,8 +51,7 @@ const redirect = (location, cookie) => {
 
 const readConfigFromKv = async (env) => {
     const kv = env?.CONFIG_KV;
-    const envDefaultUuid = (env?.DEFAULT_UUID || DEFAULT_UUID).trim();
-    const safeDefaultUuid = UUID_REGEX.test(envDefaultUuid) ? envDefaultUuid : DEFAULT_UUID;
+    const safeDefaultUuid = DEFAULT_UUID;
     if (!kv) return {uuid: safeDefaultUuid, uuidBytes: parseUuidBytes(safeDefaultUuid) || defaultUuidBytes, customProxyIp: '', hasPassword: false};
 
     const [uuidRaw, customProxyRaw, passwordHash] = await Promise.all([

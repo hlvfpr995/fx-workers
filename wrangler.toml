@@ -1,4 +1,4 @@
-name = "fx-workers-panel"
+name = "fx-workers"
 main = "fx-workers.js"
 compatibility_date = "2025-12-01"
 
@@ -7,10 +7,5 @@ workers_dev = false
 
 [[kv_namespaces]]
 binding = "CONFIG_KV"
-id = "5fe49736cb424dd28549c9a91ee999ba"
-preview_id = "5f8c8708226f497c91f63cade42fa6cf"
-
-[vars]
-# 仅作为说明用途，实际默认值在代码里也有保底
-DEFAULT_UUID = "d342d11e-d424-4583-b36e-524ab1f0afa4"
-FALLBACK_PROXYIP = "ProxyIP.CMLiussss.net"
+id = "fb3184876cae4b1ab95025c879a928d3"
+preview_id = "46ff5c1709684603b44b76d53a18af54"

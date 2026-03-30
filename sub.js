@@ -52,7 +52,7 @@ const fetchCfIpData = async (env) => {
 };
 
 export const handleSub = async (request, env, url, cfg) => {
-    const uuid = cfg?.uuid || (env?.DEFAULT_UUID || '');
+    const uuid = cfg?.uuid || '';
     if (!UUID_REGEX.test(uuid || '')) return new Response('UUID 无效，请先在面板设置有效 UUID', {status: 400});
 
     const queryUuid = (url.searchParams.get('uuid') || '').trim();
