@@ -1,0 +1,94 @@
+import {UUID_REGEX} from './panel.js';
+
+const CFIP_API_URL = 'https://vps789.com/openApi/cfIpApi';
+
+const safeLine = (lineRaw = 'ALL') => {
+    const line = String(lineRaw || 'ALL').toUpperCase();
+    if (line === 'CT' || line === 'CU' || line === 'CM' || line === 'ALL') return line;
+    return 'ALL';
+};
+
+const safeCount = (countRaw, fallback = 8) => {
+    const n = Number.parseInt(String(countRaw || fallback), 10);
+    if (Number.isNaN(n)) return fallback;
+    return Math.max(1, Math.min(30, n));
+};
+
+const toBase64Utf8 = (input) => {
+    const bytes = new TextEncoder().encode(input);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+};
+
+const buildNodeName = (line, index) => {
+    const namePrefix = line === 'CT' ? '电信' : line === 'CU' ? '联通' : '移动';
+    return `${namePrefix}${String(index).padStart(2, '0')}`;
+};
+
+const getLineEntries = (data, line, count) => {
+    const src = Array.isArray(data?.[line]) ? data[line] : [];
+    const out = [];
+    for (let i = 0; i < src.length && out.length < count; i++) {
+        const ip = String(src[i]?.ip || '').trim();
+        if (ip) out.push(ip);
+    }
+    return out;
+};
+
+const buildVlWsLink = ({uuid, ip, host, path, name}) => {
+    const encodedPath = encodeURIComponent(path);
+    const encodedName = encodeURIComponent(name);
+    return `vless://${uuid}@${ip}:443?encryption=none&security=tls&type=ws&host=${host}&path=${encodedPath}&sni=${host}#${encodedName}`;
+};
+
+const fetchCfIpData = async (env) => {
+    const apiUrl = (env?.CFIP_API_URL || CFIP_API_URL).trim() || CFIP_API_URL;
+    const resp = await fetch(apiUrl, {cf: {cacheTtl: 0, cacheEverything: false}});
+    if (!resp.ok) throw new Error(`cfIpApi 请求失败: ${resp.status}`);
+    const json = await resp.json();
+    if (json?.code !== 0 || !json?.data) throw new Error('cfIpApi 返回结构异常');
+    return json.data;
+};
+
+export const handleSub = async (request, env, url, cfg) => {
+    const uuid = cfg?.uuid || (env?.DEFAULT_UUID || '');
+    if (!UUID_REGEX.test(uuid || '')) return new Response('UUID 无效，请先在面板设置有效 UUID', {status: 400});
+
+    const queryUuid = (url.searchParams.get('uuid') || '').trim();
+    if (uuid && queryUuid !== uuid) return new Response('Not Found', {status: 404});
+
+    const line = safeLine(url.searchParams.get('line'));
+    const count = safeCount(url.searchParams.get('count'), Number.parseInt(env?.SUB_DEFAULT_COUNT || '8', 10) || 8);
+    const host = (url.searchParams.get('host') || url.hostname).trim();
+    const path = (url.searchParams.get('path') || '/').trim() || '/';
+    const format = (url.searchParams.get('format') || 'base64').toLowerCase();
+
+    let data;
+    try {
+        data = await fetchCfIpData(env);
+    } catch (err) {
+        return new Response(`获取优选 IP 失败: ${err?.message || err}`, {status: 502});
+    }
+
+    const lines = line === 'ALL' ? ['CT', 'CU', 'CM'] : [line];
+    const links = [];
+    for (const l of lines) {
+        const ips = getLineEntries(data, l, count);
+        for (let i = 0; i < ips.length; i++) {
+            links.push(buildVlWsLink({uuid, ip: ips[i], host, path, name: buildNodeName(l, i + 1)}));
+        }
+    }
+
+    const raw = links.join('\n');
+    if (format === 'raw') {
+        return new Response(raw, {headers: {'Content-Type': 'text/plain; charset=utf-8'}});
+    }
+
+    return new Response(toBase64Utf8(raw), {
+        headers: {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Subscription-Userinfo': 'upload=0; download=0; total=1125899906842624; expire=253402271999'
+        }
+    });
+};
